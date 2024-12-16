@@ -41,6 +41,11 @@ export const POST: APIRoute = async ({ request }) => {
     const imgContainer = html.querySelector(".EmbeddedMediaImage");
     const imageUrl = imgContainer?.getAttribute("src");
 
+    // Extract the username
+    const username = html
+      .querySelector(".CaptionUsername")
+      ?.textContent?.trim();
+
     // Extract the caption
     let caption = html.querySelector(".Caption")?.textContent;
 
@@ -51,9 +56,11 @@ export const POST: APIRoute = async ({ request }) => {
       // Join the remaining lines back into a single string
       caption = lines.join(" ").trim();
       // Remove "View all ..." and similar patterns
-      if (caption) caption = caption.replace(/View all.*$/i, "");
+      caption = caption.replace(/View all.*$/i, "");
       // Normalize whitespace
-      if (caption) caption = caption.replace(/\s+/g, " ").trim();
+      caption = caption.replace(/\s+/g, " ").trim();
+
+      if (caption.length > 25)caption = caption.substring(0, 25).trim() + "...";
     }
 
     if (!imageUrl) {
@@ -69,19 +76,29 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { "User-Agent": "Mozilla/5.0" }, // Add a user agent
     });
 
-    // Return the image data to the client
-    return new Response(imageResponse.data, {
-      status: 200,
-      headers: {
-        "Content-Type": imageResponse.headers["content-type"],
-        "Content-Disposition": `inline; filename="${imageUrl
-          .split("/")
-          .pop()}"`,
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    // Base64 encode the image data
+    const base64Image = Buffer.from(imageResponse.data).toString("base64");
+    const contentType = imageResponse.headers["content-type"];
+
+    return new Response(
+      JSON.stringify({
+        username,
+        caption,
+        image: `data:${contentType};base64,${base64Image}`,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
   } catch (e) {
     console.error(e instanceof Error ? e.message : String(e));
-    return new Response("An error has occurred", { status: 500 });
+    return new Response(JSON.stringify({ error: "An error has occurred" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 };
