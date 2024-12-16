@@ -3,29 +3,114 @@ import { Icon } from "astro-icon/components";
 ---
 
 <section
-  class="w-[calc(100%_-_400px)] flex flex-col items-center h-full min-h-[300px] bg-neutral-950 -translate-y-36 shadow-md"
+  class="w-full max-w-4xl mx-auto flex flex-col border border-neutral-700 items-center -translate-y-24 rounded-md h-full min-h-[400px] bg-neutral-950 shadow-md p-4"
 >
-  <form action="" class="w-full">
-    <div class="w-full flex border-b border-b-neutral-700">
+  <form
+    enctype="multipart/form-data"
+    class="w-full flex flex-col sm:flex-row"
+    method="POST"
+    id="input-form"
+  >
+    <div class="flex-grow flex items-center border-b border-b-neutral-700">
       <input
         type="url"
-        class="flex-grow border-none outline-none px-4 py-2 bg-neutral-900 text-white"
-        placeholder="Enter Instagram Link..."
+        class="flex-grow h-full basis-0 border-none outline-none px-4 py-2 bg-neutral-900 text-white placeholder-neutral-500"
+        placeholder="https://www.instagram.com/p/C_2VVpBowPg/"
         name="instagram_link"
         id="instagram_link"
       />
-      <button class="w-42 text-white bg-blue-500 aspect-square px-2">
-        <Icon name="send" size={30} class="object-contain" />
+      <button
+        class="w-12 h-12 flex items-center justify-center text-white bg-blue-500 hover:text-neutral-300 transition-colors"
+      >
+        <Icon name="send" size={24} class="object-contain" />
       </button>
     </div>
   </form>
-  <div class="w-full h-full flex flex-col justify-center items-center mt-8">
-    <h4 class="text-white text-xl font-medium">No Downloads Yet!</h4>
-    <p
-      class="text-lg text-pretty max-w-2xl text-center leading-[1.5] mt-4 text-neutral-500"
-    >
-      Start by entering an Instagram link above to download photos, videos, or
-      reels. Your downloads will appear here once they’re ready!
-    </p>
+  <div
+    class="w-full h-full flex flex-col justify-center items-center mt-4"
+    id="output-container"
+  >
+    <div media-container="true" class="w-full flexs">
+      <div
+        class="w-full flex h-full max-h-[200px] pb-2 justify-between items-center border-b border-b-neutral-700"
+      >
+        <div class="flex itmes-center h-full gap-4">
+          <img width="70" height="70" src="/square.jpg" class="object-contain aspect-square" alt="" />
+          <div>
+            <h4 class="text-white text-lg font-medium">Post Title</h4>
+            <p class="text-neutral-500 text-sm">Post Description</p>
+          </div>
+        </div>
+        <div class="flex gap-1 items-center">
+          <a class="text-blue-500 cursor-pointer text-lg font-medium">Download</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="placeholder-message" class="text-center mt-4">
+      <h4 class="text-white text-xl font-medium">No Downloads Yet!</h4>
+      <p
+        class="text-lg max-w-2xl text-center leading-[1.5] mt-4 text-neutral-500"
+      >
+        Start by entering an Instagram link above to download photos, videos, or
+        reels. Your downloads will appear here once they’re ready!
+      </p>
+    </div>
   </div>
 </section>
+
+<script>
+  const form = document.getElementById("input-form") as HTMLFormElement;
+  const mediaContainer = document.querySelector("[media-container]");
+  const placeholderMessage = document.getElementById("placeholder-message");
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+
+    try {
+      // Fetch data
+      const res = await fetch("/api/postlink", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch data:", res.statusText);
+        const errorMessage = await res.text();
+        console.error("Error message:", errorMessage);
+        return;
+      }
+
+      // Handle the binary image response
+      const blob = await res.blob(); // Expecting binary data (image)
+      const imageUrl = URL.createObjectURL(blob); // Create an object URL for the image
+
+      if (mediaContainer) mediaContainer.innerHTML = "";
+
+      // Hide the placeholder message
+      if (placeholderMessage) {
+        placeholderMessage.style.display = "none";
+      }
+    } catch (error) {
+      console.error("An error occurred:", error);
+    }
+  });
+
+  // Check if there is existing content in the media container and toggle the placeholder message
+  const togglePlaceholderMessage = () => {
+    if (
+      mediaContainer &&
+      placeholderMessage &&
+      mediaContainer.children.length > 0
+    ) {
+      placeholderMessage.style.display = "none";
+    } else {
+      if (placeholderMessage) placeholderMessage.style.display = "block";
+    }
+  };
+
+  // Initial check on page load
+  togglePlaceholderMessage();
+</script>
