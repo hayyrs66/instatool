@@ -30,19 +30,27 @@ import { Icon } from "astro-icon/components";
     class="w-full h-full flex flex-col justify-center items-center mt-4"
     id="output-container"
   >
-    <div media-container="true" class="w-full flexs">
+    <div media-container="true" class="w-full flex flex-col gap-2">
       <div
         class="w-full flex h-full max-h-[200px] pb-2 justify-between items-center border-b border-b-neutral-700"
       >
         <div class="flex itmes-center h-full gap-4">
-          <img width="70" height="70" src="/square.jpg" class="object-contain aspect-square" alt="" />
+          <img
+            width="70"
+            height="70"
+            src="/square.jpg"
+            class="object-contain aspect-square"
+            alt=""
+          />
           <div>
             <h4 class="text-white text-lg font-medium">Post Title</h4>
             <p class="text-neutral-500 text-sm">Post Description</p>
           </div>
         </div>
         <div class="flex gap-1 items-center">
-          <a class="text-blue-500 cursor-pointer text-lg font-medium">Download</a>
+          <a class="text-blue-500 cursor-pointer text-lg font-medium"
+            >Download</a
+          >
         </div>
       </div>
     </div>
@@ -61,7 +69,9 @@ import { Icon } from "astro-icon/components";
 
 <script>
   const form = document.getElementById("input-form") as HTMLFormElement;
-  const mediaContainer = document.querySelector("[media-container]");
+  const mediaContainer = document.querySelector(
+    "[media-container]"
+  ) as HTMLElement;
   const placeholderMessage = document.getElementById("placeholder-message");
 
   form?.addEventListener("submit", async (e) => {
@@ -70,36 +80,126 @@ import { Icon } from "astro-icon/components";
     const formData = new FormData(form);
 
     try {
-      // Fetch data
+      // Send POST request to the API with the form data
       const res = await fetch("/api/postlink", {
         method: "POST",
         body: formData,
       });
 
+      // Handle non-OK responses
       if (!res.ok) {
         console.error("Failed to fetch data:", res.statusText);
         const errorMessage = await res.text();
         console.error("Error message:", errorMessage);
+        displayError(errorMessage);
         return;
       }
 
-      // Handle the binary image response
-      const blob = await res.blob(); // Expecting binary data (image)
-      const imageUrl = URL.createObjectURL(blob); // Create an object URL for the image
+      // Parse the JSON response
+      const data = await res.json();
 
-      if (mediaContainer) mediaContainer.innerHTML = "";
+      console.log("Data received:", data);
 
+      const { username, caption, image } = data;
+
+      if (mediaContainer) {
+        mediaContainer.innerHTML = "";
+
+        createMediaElement(mediaContainer, username, caption, image);
+      }
       // Hide the placeholder message
       if (placeholderMessage) {
         placeholderMessage.style.display = "none";
       }
     } catch (error) {
       console.error("An error occurred:", error);
+      displayError("An unexpected error occurred. Please try again.");
     }
   });
 
-  // Check if there is existing content in the media container and toggle the placeholder message
-  const togglePlaceholderMessage = () => {
+  function createMediaElement(
+    mediaContainer: HTMLElement,
+    username: string,
+    caption: string,
+    image: string
+  ) {
+    // Create and append the image element
+    if (mediaContainer && image && username && caption) {
+      const div = document.createElement("div");
+      div.classList.add(
+        "w-full",
+        "flex",
+        "h-full",
+        "max-h-[200px]",
+        "pb-2",
+        "justify-between",
+        "items-center",
+        "border-b",
+        "border-b-neutral-700"
+      );
+
+      const innerDiv = document.createElement("div");
+      innerDiv.classList.add("flex", "itmes-center", "h-full", "gap-4");
+      const img = document.createElement("img");
+      img.width = 70;
+      img.height = 70;
+      img.src = image;
+      img.classList.add("object-contain", "aspect-square");
+      img.alt = caption;
+
+      innerDiv.appendChild(img);
+
+      const textDiv = document.createElement("div");
+      const h4 = document.createElement("h4");
+      h4.classList.add("text-white", "text-lg", "font-medium");
+      h4.textContent = username;
+
+      const p = document.createElement("p");
+      p.classList.add("text-neutral-500", "text-sm");
+
+      p.textContent = caption;
+      
+      
+
+      textDiv.appendChild(h4);
+      textDiv.appendChild(p);
+
+      innerDiv.appendChild(textDiv);
+
+      const actionDiv = document.createElement("div");
+      actionDiv.classList.add("flex", "gap-1", "items-center");
+      const a = document.createElement("a");
+      a.classList.add(
+        "text-blue-500",
+        "cursor-pointer",
+        "text-lg",
+        "font-medium"
+      );
+      a.textContent = "Download";
+      a.href = image;
+      a.download = "media";
+
+      actionDiv.appendChild(a);
+
+      div.appendChild(innerDiv);
+      div.appendChild(actionDiv);
+
+      mediaContainer.appendChild(div);
+    }
+  }
+
+  // Function to display error messages to the user
+  function displayError(message: string) {
+    if (mediaContainer) {
+      mediaContainer.innerHTML = `<p style="color: red;">${message}</p>`;
+    }
+    if (placeholderMessage) {
+      placeholderMessage.style.display = "none";
+    }
+  }
+
+  // Function to toggle the placeholder message based on media content
+  function togglePlaceholderMessage() {
     if (
       mediaContainer &&
       placeholderMessage &&
@@ -109,7 +209,7 @@ import { Icon } from "astro-icon/components";
     } else {
       if (placeholderMessage) placeholderMessage.style.display = "block";
     }
-  };
+  }
 
   // Initial check on page load
   togglePlaceholderMessage();
