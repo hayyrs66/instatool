@@ -18,8 +18,10 @@ import { Icon } from "astro-icon/components";
         placeholder="https://www.instagram.com/p/C_2VVpBowPg/"
         name="instagram_link"
         id="instagram_link"
+        required
       />
       <button
+        type="submit"
         class="w-12 h-12 flex items-center justify-center text-white bg-blue-500 hover:text-neutral-300 transition-colors"
       >
         <Icon name="send" size={24} class="object-contain" />
@@ -27,51 +29,34 @@ import { Icon } from "astro-icon/components";
     </div>
   </form>
   <div
-    class="w-full h-full flex flex-col justify-center items-center mt-4"
+    class="w-full flex-grow flex flex-col items-center mt-4"
     id="output-container"
   >
     <div media-container="true" class="w-full flex flex-col gap-2">
-      <div
-        class="w-full flex h-full max-h-[200px] pb-2 justify-between items-center border-b border-b-neutral-700"
-      >
-        <div class="flex itmes-center h-full gap-4">
-          <img
-            width="70"
-            height="70"
-            src="/square.jpg"
-            class="object-contain aspect-square"
-            alt=""
-          />
-          <div>
-            <h4 class="text-white text-lg font-medium">Post Title</h4>
-            <p class="text-neutral-500 text-sm">Post Description</p>
-          </div>
-        </div>
-        <div class="flex gap-1 items-center">
-          <a class="text-blue-500 cursor-pointer text-lg font-medium"
-            >Download</a
-          >
-        </div>
-      </div>
+      <!-- Contenido generado dinámicamente se insertará aquí -->
     </div>
 
-    <div id="placeholder-message" class="text-center mt-4">
-      <h4 class="text-white text-xl font-medium">No Downloads Yet!</h4>
+    <div
+      id="placeholder-message"
+      class="flex flex-col justify-center items-center text-center mt-4"
+    >
+      <h4 class="text-white text-xl font-medium">
+        There are no downloads yet!
+      </h4>
       <p
         class="text-lg max-w-2xl text-center leading-[1.5] mt-4 text-neutral-500"
       >
         Start by entering an Instagram link above to download photos, videos, or
-        reels. Your downloads will appear here once they’re ready!
+        reels. Your downloads will appear here once they're ready!
       </p>
     </div>
   </div>
 </section>
 
+<!-- client code -->
 <script>
-  const form = document.getElementById("input-form") as HTMLFormElement;
-  const mediaContainer = document.querySelector(
-    "[media-container]"
-  ) as HTMLElement;
+  const form = document.getElementById("input-form");
+  const mediaContainer = document.querySelector("[media-container]");
   const placeholderMessage = document.getElementById("placeholder-message");
 
   form?.addEventListener("submit", async (e) => {
@@ -80,34 +65,49 @@ import { Icon } from "astro-icon/components";
     const formData = new FormData(form);
 
     try {
-      // Send POST request to the API with the form data
+      // Send POST request to the API
       const res = await fetch("/api/postlink", {
         method: "POST",
         body: formData,
       });
 
-      // Handle non-OK responses
+      // Handle non-successful responses
       if (!res.ok) {
         console.error("Failed to fetch data:", res.statusText);
         const errorMessage = await res.text();
         console.error("Error message:", errorMessage);
-        displayError(errorMessage);
+        displayError(JSON.parse(errorMessage).error || "An error occurred.");
         return;
       }
 
-      // Parse the JSON response
+      // Parse the response as JSON
       const data = await res.json();
+      const { username, caption, media } = data;
 
-      console.log("Data received:", data);
-
-      const { username, caption, image } = data;
-
+      // Clear previous content
       if (mediaContainer) {
         mediaContainer.innerHTML = "";
-
-        createMediaElement(mediaContainer, username, caption, image);
       }
-      // Hide the placeholder message
+
+      // Iterate over media array and create elements for each
+      if (Array.isArray(media) && media.length > 0) {
+        media.forEach((item, index) => {
+          createMediaElement(
+            mediaContainer,
+            username,
+            caption,
+            item.dataUrl,
+            item.type,
+            item.downloadUrl,
+            index + 1
+          );
+        });
+      } else {
+        // In case there's no media
+        displayError("No media available.");
+      }
+
+      // Hide placeholder message
       if (placeholderMessage) {
         placeholderMessage.style.display = "none";
       }
@@ -118,13 +118,15 @@ import { Icon } from "astro-icon/components";
   });
 
   function createMediaElement(
-    mediaContainer: HTMLElement,
-    username: string,
-    caption: string,
-    image: string
+    mediaContainer,
+    username,
+    caption,
+    dataUrl,
+    type,
+    downloadUrl,
+    index
   ) {
-    // Create and append the image element
-    if (mediaContainer && image && username && caption) {
+    if (mediaContainer && dataUrl && username && caption && type) {
       const div = document.createElement("div");
       div.classList.add(
         "w-full",
@@ -139,15 +141,19 @@ import { Icon } from "astro-icon/components";
       );
 
       const innerDiv = document.createElement("div");
-      innerDiv.classList.add("flex", "itmes-center", "h-full", "gap-4");
-      const img = document.createElement("img");
-      img.width = 70;
-      img.height = 70;
-      img.src = image;
-      img.classList.add("object-contain", "aspect-square");
-      img.alt = caption;
+      innerDiv.classList.add("flex", "items-center", "h-full", "gap-4");
 
-      innerDiv.appendChild(img);
+      // Image container
+      const imageContainer = document.createElement("div");
+      imageContainer.classList.add("w-16", "h-16", "relative", "aspect-square");
+
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.classList.add("object-contain", "w-full", "h-full", "rounded-md");
+      img.alt = caption ? caption : "Instagram media";
+
+      imageContainer.appendChild(img);
+      innerDiv.appendChild(imageContainer);
 
       const textDiv = document.createElement("div");
       const h4 = document.createElement("h4");
@@ -156,13 +162,15 @@ import { Icon } from "astro-icon/components";
 
       const p = document.createElement("p");
       p.classList.add("text-neutral-500", "text-sm");
+      p.textContent = caption ? caption : "No caption available for this post.";
 
-      p.textContent = caption;
-      
-      
+      const span = document.createElement("span");
+      span.classList.add("text-blue-300", "text-xs");
+      span.textContent = type === "video" ? "Video" : "Image";
 
       textDiv.appendChild(h4);
       textDiv.appendChild(p);
+      textDiv.appendChild(span);
 
       innerDiv.appendChild(textDiv);
 
@@ -176,8 +184,14 @@ import { Icon } from "astro-icon/components";
         "font-medium"
       );
       a.textContent = "Download";
-      a.href = image;
-      a.download = "media";
+
+      if (type === "video" && downloadUrl) {
+        a.href = downloadUrl;
+        a.setAttribute("download", `instagram_video_${index}.mp4`);
+      } else {
+        a.href = dataUrl;
+        a.setAttribute("download", `instagram_image_${index}.jpg`);
+      }
 
       actionDiv.appendChild(a);
 
@@ -188,17 +202,17 @@ import { Icon } from "astro-icon/components";
     }
   }
 
-  // Function to display error messages to the user
-  function displayError(message: string) {
+  // Show error messages to the user
+  function displayError(message) {
     if (mediaContainer) {
-      mediaContainer.innerHTML = `<p style="color: red;">${message}</p>`;
+      mediaContainer.innerHTML = `<p class="text-red-500">${message}</p>`;
     }
     if (placeholderMessage) {
       placeholderMessage.style.display = "none";
     }
   }
 
-  // Function to toggle the placeholder message based on media content
+  // Toggle placeholder message
   function togglePlaceholderMessage() {
     if (
       mediaContainer &&
@@ -207,7 +221,7 @@ import { Icon } from "astro-icon/components";
     ) {
       placeholderMessage.style.display = "none";
     } else {
-      if (placeholderMessage) placeholderMessage.style.display = "block";
+      if (placeholderMessage) placeholderMessage.style.display = "flex";
     }
   }
 
