@@ -3,57 +3,66 @@ import { Icon } from "astro-icon/components";
 ---
 
 <section
-  class="w-full max-w-4xl mx-auto flex flex-col border border-neutral-700 items-center -translate-y-24 rounded-md h-full min-h-[400px] bg-neutral-950 shadow-md p-4"
+  class="w-full max-w-4xl mx-auto flex flex-col items-center translate-y-[-50px] rounded-lg bg-neutral-950 shadow-lg p-6"
 >
-  <form
-    enctype="multipart/form-data"
-    class="w-full flex flex-col sm:flex-row"
-    method="POST"
-    id="input-form"
-  >
-    <div class="flex-grow flex items-center border-b border-b-neutral-700">
-      <input
-        type="url"
-        class="flex-grow h-full basis-0 border-none outline-none px-4 py-2 bg-neutral-900 text-white placeholder-neutral-500"
-        placeholder="https://www.instagram.com/p/C_2VVpBowPg/"
-        name="instagram_link"
-        id="instagram_link"
-        required
-      />
-      <button
-        type="submit"
-        class="w-12 h-12 flex items-center justify-center text-white bg-blue-500 hover:text-neutral-300 transition-colors"
-      >
-        <Icon name="send" size={24} class="object-contain" />
-      </button>
-    </div>
-  </form>
-  <div
-    class="w-full flex-grow flex flex-col items-center mt-4"
-    id="output-container"
-  >
-    <div media-container="true" class="w-full flex flex-col gap-2">
-      <!-- Contenido generado dinámicamente se insertará aquí -->
+  <!-- Form Section -->
+  <header class="w-full mb-6">
+    <form
+      enctype="multipart/form-data"
+      class="w-full flex flex-col sm:flex-row items-center gap-4"
+      method="POST"
+      id="input-form"
+    >
+      <div class="flex w-full border-b border-b-neutral-700">
+        <label for="instagram_link" class="sr-only">Instagram Link</label>
+        <input
+          type="url"
+          id="instagram_link"
+          class="flex-grow min-w-0 h-12 border-none outline-none px-4 py-2 bg-neutral-900 text-white placeholder-neutral-500 rounded-l-lg sm:rounded-l-md"
+          placeholder="https://www.instagram.com/p/C_2VVpBowPg/"
+          name="instagram_link"
+          required
+        />
+        <button
+          type="submit"
+          class="w-12 h-12 min-w-12 flex items-center justify-center text-white bg-blue-500 hover:bg-blue-600 transition-colors rounded-tr-md sm:rounded-r-md"
+          aria-label="Submit Instagram Link"
+        >
+          <Icon name="send" size={24} class="object-contain" />
+        </button>
+      </div>
+    </form>
+  </header>
+
+  <!-- Dynamic Content Section -->
+  <main class="w-full flex-grow flex flex-col items-center">
+    <div
+      media-container="true"
+      class="w-full flex flex-col gap-6"
+      id="output-container"
+      aria-live="polite"
+    >
+      <!-- Dynamically generated content goes here -->
     </div>
 
+    <!-- Placeholder Message -->
     <div
       id="placeholder-message"
-      class="flex flex-col justify-center items-center text-center mt-4"
+      class="flex flex-col justify-center items-center text-center mt-8 py-10 px-6"
     >
-      <h4 class="text-white text-xl font-medium">
+      <h4 class="text-white text-xl sm:text-2xl lg:text-3xl font-medium">
         There are no downloads yet!
       </h4>
       <p
-        class="text-lg max-w-2xl text-center leading-[1.5] mt-4 text-neutral-500"
+        class="text-base sm:text-lg lg:text-xl max-w-xl leading-[1.6] mt-4 text-neutral-500"
       >
         Start by entering an Instagram link above to download photos, videos, or
         reels. Your downloads will appear here once they're ready!
       </p>
     </div>
-  </div>
+  </main>
 </section>
 
-<!-- client code -->
 <script>
   const form = document.getElementById("input-form");
   const mediaContainer = document.querySelector("[media-container]");
@@ -65,13 +74,11 @@ import { Icon } from "astro-icon/components";
     const formData = new FormData(form);
 
     try {
-      // Send POST request to the API
-      const res = await fetch("/api/postlink", {
+      const res = await fetch("/api/content", {
         method: "POST",
         body: formData,
       });
 
-      // Handle non-successful responses
       if (!res.ok) {
         console.error("Failed to fetch data:", res.statusText);
         const errorMessage = await res.text();
@@ -80,22 +87,22 @@ import { Icon } from "astro-icon/components";
         return;
       }
 
-      // Parse the response as JSON
       const data = await res.json();
       const { username, caption, media } = data;
+      const rawCaption: string =
+        caption || "No caption available for this post.";
+      const displayCaption =
+        rawCaption.length > 40 ? rawCaption.slice(0, 40) + "..." : rawCaption;
 
-      // Clear previous content
       if (mediaContainer) {
         mediaContainer.innerHTML = "";
       }
-
-      // Iterate over media array and create elements for each
       if (Array.isArray(media) && media.length > 0) {
         media.forEach((item, index) => {
           createMediaElement(
             mediaContainer,
             username,
-            caption,
+            displayCaption,
             item.dataUrl,
             item.type,
             item.downloadUrl,
@@ -103,11 +110,8 @@ import { Icon } from "astro-icon/components";
           );
         });
       } else {
-        // In case there's no media
         displayError("No media available.");
       }
-
-      // Hide placeholder message
       if (placeholderMessage) {
         placeholderMessage.style.display = "none";
       }
@@ -143,14 +147,15 @@ import { Icon } from "astro-icon/components";
       const innerDiv = document.createElement("div");
       innerDiv.classList.add("flex", "items-center", "h-full", "gap-4");
 
-      // Image container
       const imageContainer = document.createElement("div");
       imageContainer.classList.add("w-16", "h-16", "relative", "aspect-square");
 
       const img = document.createElement("img");
-      img.src = dataUrl;
+      const proxiedURL = `/api/proxy?url=${encodeURIComponent(dataUrl)}`; // Use `dataUrl`
+      img.src = proxiedURL;
+
       img.classList.add("object-contain", "w-full", "h-full", "rounded-md");
-      img.alt = caption ? caption : "Instagram media";
+      img.alt = caption || "Instagram media";
 
       imageContainer.appendChild(img);
       innerDiv.appendChild(imageContainer);
@@ -162,7 +167,7 @@ import { Icon } from "astro-icon/components";
 
       const p = document.createElement("p");
       p.classList.add("text-neutral-500", "text-sm");
-      p.textContent = caption ? caption : "No caption available for this post.";
+      p.textContent = caption;
 
       const span = document.createElement("span");
       span.classList.add("text-blue-300", "text-xs");
@@ -189,7 +194,7 @@ import { Icon } from "astro-icon/components";
         a.href = downloadUrl;
         a.setAttribute("download", `instagram_video_${index}.mp4`);
       } else {
-        a.href = dataUrl;
+        a.href = proxiedURL;
         a.setAttribute("download", `instagram_image_${index}.jpg`);
       }
 
@@ -202,7 +207,6 @@ import { Icon } from "astro-icon/components";
     }
   }
 
-  // Show error messages to the user
   function displayError(message) {
     if (mediaContainer) {
       mediaContainer.innerHTML = `<p class="text-red-500">${message}</p>`;
@@ -212,7 +216,6 @@ import { Icon } from "astro-icon/components";
     }
   }
 
-  // Toggle placeholder message
   function togglePlaceholderMessage() {
     if (
       mediaContainer &&
@@ -225,6 +228,5 @@ import { Icon } from "astro-icon/components";
     }
   }
 
-  // Initial check on page load
   togglePlaceholderMessage();
 </script>
