@@ -3,7 +3,7 @@ import { Icon } from "astro-icon/components";
 ---
 
 <section
-  class="w-full max-w-4xl mx-auto flex flex-col items-center translate-y-[-50px] rounded-lg bg-neutral-950 shadow-lg p-6"
+  class="w-full max-w-4xl border_gradient mx-auto flex flex-col items-center translate-y-[-6rem] rounded-lg bg-neutral-950 shadow-lg p-6"
 >
   <!-- Form Section -->
   <header class="w-full mb-6">
@@ -48,17 +48,11 @@ import { Icon } from "astro-icon/components";
     <!-- Placeholder Message -->
     <div
       id="placeholder-message"
-      class="flex flex-col justify-center items-center text-center mt-8 py-10 px-6"
+      class="flex flex-col justify-center items-center text-center py-10 px-6"
     >
-      <h4 class="text-white text-xl sm:text-2xl lg:text-3xl font-medium">
-        There are no downloads yet!
+      <h4 class="text-white text-xl font-medium">
+        There are no downloads yet.
       </h4>
-      <p
-        class="text-base sm:text-lg lg:text-xl max-w-xl leading-[1.6] mt-4 text-neutral-500"
-      >
-        Start by entering an Instagram link above to download photos, videos, or
-        reels. Your downloads will appear here once they're ready!
-      </p>
     </div>
   </main>
 </section>
@@ -230,3 +224,12 @@ import { Icon } from "astro-icon/components";
 
   togglePlaceholderMessage();
 </script>
+
+<style>
+  .border_gradient {
+    background:
+      linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+      linear-gradient(to right, #a855f7, #f9a8d4) border-box;
+    border: 1px solid transparent;
+  }
+</style>
